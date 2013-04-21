@@ -79,7 +79,7 @@ Let's filter out the primes from the naterual numbers >= 2
 >>> primes[:12]
 [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
 
-Embarassing limitation:
+An old-and-fixed stack limitation:
 >>> over9000 = numbers.filter(lambda n: n>9000)
 >>> over9000.next()
 9001
@@ -247,43 +247,46 @@ class Picky(object):
             return self.filters['n'] - len(self.consumed_by_self)
 
     def __run(self, e=None):
-        # run our own element if none specified
-        if e is None:
-            if self.e is None and isinstance(self.source, Source):
-                self.e = self.source.next()
-            e = self.e
-        if isinstance(self.source, Picky):
-            e = self.source.__run(e)
+        while 1:
+            # run our own element if none specified
+            if e is None:
+                if self.e is None and isinstance(self.source, Source):
+                    self.e = self.source.next()
+                e = self.e
+            if isinstance(self.source, Picky):
+                e = self.source.__run(e)
             
-        # max out at self.filters['n'] items
-        if 'n' in self.filters:
-            if len(self.consumed_by_self) >= self.filters['n']:
-                raise StopIteration
+            # max out at self.filters['n'] items
+            if 'n' in self.filters:
+                if len(self.consumed_by_self) >= self.filters['n']:
+                    raise StopIteration
 
-        # jump over consumed elements
-        while e.consumed:
-            e = e.next
+            # jump over consumed elements
+            while e.consumed:
+                e = e.next
 
-        # function filter
-        if 'f' in self.filters and not self.filters['f'](e.obj):
-            return self.__run(e.next)
-        # predicament filter
-        if 'p' in self.filters:
-            if self.filters['p'] is False:
-                raise StopIteration
-            elif not self.filters['p'](e.obj):
+            # function filter
+            if 'f' in self.filters and not self.filters['f'](e.obj):
+                e = e.next
+                continue
+            # predicament filter
+            if 'p' in self.filters:
+                if self.filters['p'] is False:
+                    raise StopIteration
+                elif not self.filters['p'](e.obj):
                     self.filters['p'] = False
                     raise StopIteration
 
-        if 'stepping' in self.filters:
-            if not '_step' in self.filters:
-                self.filters['_step'] = 0
-            else:
-                self.filters['_step'] += 1
-                self.filters['_step'] %= self.filters['stepping']
-            if not self.filters['_step'] == 0:
-                return self.__run(e.next)
-
+            if 'stepping' in self.filters:
+                if not '_step' in self.filters:
+                    self.filters['_step'] = 0
+                else:
+                    self.filters['_step'] += 1
+                    self.filters['_step'] %= self.filters['stepping']
+                if not self.filters['_step'] == 0:
+                    e = e.next
+                    continue
+            break
         return e
 
     def next(self):
