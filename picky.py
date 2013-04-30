@@ -241,11 +241,6 @@ class Picky(object):
                 args['step'] = index.step
             return list(self.slice(**args))
 
-    def __len__(self):
-        # XXX: Remove me
-        if 'n' in self.filters:
-            return self.filters['n'] - len(self.consumed_by_self)
-
     def __run(self, e=None):
         while 1:
             # run our own element if none specified
@@ -347,10 +342,6 @@ class Picky(object):
 
     def filter(self, f):
         return Picky(self, filters={'f': f})
-
-    def all(self):
-        # XXX: This probably doesn't work as intended
-        return Picky(self, filters={})
 
     def merge(self, p, f=operator.__le__):
         """
