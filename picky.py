@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 This module contains 'Picky', a tool intended to cherry-pick data from
 django querysets (or any iterator) while leaving the non-picked model
@@ -11,8 +11,7 @@ the filter parameter from the parents Picky instance.
 
 Example usage:
 
->>> import itertools
->>> p = Picky(IteratorSource(itertools.count()))
+>>> p = Picky(IteratorSource(count()))
 
 Iterating over p is now roughly equivilent as iterating
 over itertools.count()
@@ -74,7 +73,7 @@ True
 [20, 22]
 
 Let's filter out the primes from the naterual numbers >= 2
->>> numbers = Picky(IteratorSource(itertools.count(2)))
+>>> numbers = Picky(count(2))
 >>> primes = numbers.filter(lambda n: all([n%p!=0 for p in primes.consumed]))
 >>> primes[:12]
 [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37]
@@ -85,6 +84,7 @@ An old-and-fixed stack limitation:
 9001
 """
 import operator
+from itertools import count # Used in doctests
 try:
     from django.db.models.query import QuerySet
 except: # no django environment
@@ -194,24 +194,21 @@ class Picky(object):
         point of no-return on the element chain, as well as
         our source instance.
         """
-        if isinstance(source, list):
+        if isinstance(source, Source):
+            pass
+        elif isinstance(source, Picky):
+            if e is None:
+                e = source.e
+        # Wrap pythonic datatypes in appropriate Source
+        elif isinstance(source, list):
             source = ListSource(source, **skw)
         elif isinstance(source, QuerySet):
             source = QuerySetSource(source, **skw)
-#        elif hasattr(source, 'next'):
-#            source = IteratorSource(source, **skw)
+        elif hasattr(source, '__iter__') and hasattr(source, 'next'):
+            source = IteratorSource(source, **skw)
         elif source is None:
             raise ValueError, "Picky wants an iterable"
         
-        if e is None:
-            if isinstance(source, Source):
-                # initial element
-                #e = source.next() deferring execution
-                pass
-            elif isinstance(source, Picky):
-                # inherit parent picky's position
-                e = source.e
-
         self.source = source
         self.e = e
 
@@ -457,6 +454,16 @@ class Picky(object):
         XXX: Needs better tests
         """
         return Picky(self, filters={'p': predicament})
+
+    def chain(self, other):
+        """
+        >>> import itertools
+        >>> a = Picky([1, 2, 3, 4, 5])
+        >>> b = Picky(count(4))
+        >>> a.chain(b)[:10]
+        [1, 2, 3, 4, 5, 4, 5, 6, 7, 8]
+        """
+        return self.merge(other, f=lambda a,b: True)
 
 
 if __name__ == "__main__":
