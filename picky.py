@@ -118,13 +118,15 @@ class ElementWrapper(object):
 class ListSource(Source):
     def __init__(self, lst):
         self.lst = lst
+        self.index = 0
 
     def next(self):
         e = ElementWrapper(self)
         try:
-            e.obj = self.lst.pop(0)
+            e.obj = self.lst[self.index]
         except IndexError:
             raise StopIteration
+        self.index += 1
         return e
 
 
@@ -357,10 +359,6 @@ class Picky(object):
         """
         return Picky(MergeSource(self, p, f))
 
-    def __add__(self, other):
-        """Alias for merge"""
-        return self.merge(other, lambda a, b: True)
-
     def has_more(self):
         """
         Returns the boolean value of whether there is another element
@@ -422,12 +420,11 @@ class Picky(object):
         [0, 2, 4, 6, 8]
         >>> list(p)
         [1, 3, 5, 7, 9]
+        >>> list(Picky(range(10)) % 2)
+        [0, 2, 4, 6, 8]
         """
         return self.slice(step=n)
-
-    def __mod__(self, i):
-        """Alias for step"""
-        return self.step(i)
+    __mod__ = step
 
     def last(self):
         """
@@ -450,8 +447,6 @@ class Picky(object):
         >>> p = Picky([4, 1, 6, 3, 8, 0, 11, 9, 3, 13])
         >>> list(p.takewhile(lambda obj: obj < 10))
         [4, 1, 6, 3, 8, 0]
-
-        XXX: Needs better tests
         """
         return Picky(self, filters={'p': predicament})
 
